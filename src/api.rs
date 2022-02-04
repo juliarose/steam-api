@@ -1,12 +1,23 @@
 use std::sync::Arc;
 use reqwest::{cookie::Jar, Url};
 use reqwest_middleware::ClientWithMiddleware;
-use crate::APIError;
-use crate::api_helpers::{
-    get_default_middleware,
-    parses_response
+use crate::{
+    APIError,
+    request::{
+        self,
+        serializers::{
+            steamid_as_string
+        }
+    },
+    response,
+    api_helpers::{
+        get_default_middleware,
+        parses_response
+    }
 };
 use lazy_regex::regex_captures;
+use steamid_ng::SteamID;
+use serde::Serialize;
 
 #[derive(Debug)]
 pub struct SteamAPI {
@@ -53,7 +64,26 @@ impl SteamAPI {
         }
     }
     
-    pub async fn authenticate_user(&self) -> Result<(), APIError> {
-        Ok(())
+    pub async fn authenticate_user<'a>(&self, steamid: &'a SteamID, sessionkey: &'a str, encrypted_loginkey: &'a str) -> Result<response::AuthenticateUser, APIError> {        
+        #[derive(Serialize, Debug)]
+        struct AuthicateUserParams<'a> {
+            #[serde(serialize_with = "steamid_as_string")]
+            steamid: &'a SteamID,
+            sessionkey: &'a str,
+            encrypted_loginkey: &'a str,
+        }
+        
+        let uri = self.get_api_url("ISteamUserAuth", "AuthenticateUser", 1);
+        let response = self.client.post(uri)
+            .form(&AuthicateUserParams {
+                steamid,
+                sessionkey,
+                encrypted_loginkey,
+            })
+            .send()
+            .await?;
+        let body: response::AuthenticateUser = parses_response(response).await?;
+        
+        Ok(body)
     }
 }
