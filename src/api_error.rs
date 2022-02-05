@@ -46,6 +46,12 @@ impl From<reqwest_middleware::Error> for APIError {
     }
 }
 
+impl From<std::fmt::Error> for APIError {
+    fn from(_error: std::fmt::Error) -> APIError {
+        APIError::ParameterError("Formatting error")
+    }
+}
+
 impl From<serde_json::Error> for APIError {
     fn from(error: serde_json::Error) -> APIError {
         APIError::ParseError(error)

@@ -1,23 +1,20 @@
 use std::sync::Arc;
-use reqwest::{cookie::Jar, Url};
+use reqwest::{cookie::Jar, Url, header};
 use reqwest_middleware::ClientWithMiddleware;
 use crate::{
     APIError,
-    request::{
-        self,
-        serializers::{
-            steamid_as_string
-        }
-    },
+    request,
     response,
     api_helpers::{
         get_default_middleware,
         parses_response
     }
 };
+use std::fmt::{self, Write};
 use lazy_regex::regex_captures;
 use steamid_ng::SteamID;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use rand::Rng;
 
 #[derive(Debug)]
 pub struct SteamAPI {
@@ -64,26 +61,61 @@ impl SteamAPI {
         }
     }
     
-    pub async fn authenticate_user<'a>(&self, steamid: &'a SteamID, sessionkey: &'a str, encrypted_loginkey: &'a str) -> Result<response::AuthenticateUser, APIError> {        
-        #[derive(Serialize, Debug)]
-        struct AuthicateUserParams<'a> {
-            #[serde(serialize_with = "steamid_as_string")]
-            steamid: &'a SteamID,
-            sessionkey: &'a str,
-            encrypted_loginkey: &'a str,
+    pub async fn authenticate_user<'a>(&self, steamid: &'a SteamID, sessionkey: &'a [u8], encrypted_loginkey: &'a [u8]) -> Result<(String, Vec<String>), APIError> {
+        #[derive(Deserialize, Debug)]
+        struct Response {
+            authenticateuser: response::AuthenticateUser,
         }
         
+        fn bytes_to_string(bytes: &[u8]) -> Result<String, fmt::Error> {
+            let mut s = String::with_capacity(bytes.len() * 3);
+            
+            for &b in bytes {
+                write!(&mut s, "%{:02x}", b)?;
+            }
+            
+            Ok(s)
+        }
+        
+        fn generate_sessionid() -> Result<String, fmt::Error> {
+            fn bytes_to_string(bytes: &[u8]) -> Result<String, fmt::Error> {
+                let mut s = String::with_capacity(bytes.len() * 2);
+                
+                for &b in bytes {
+                    write!(&mut s, "{:02x}", b)?;
+                }
+                
+                Ok(s)
+            }
+            
+            bytes_to_string(&rand::thread_rng().gen::<[u8; 12]>())
+        }
+        
+        let query = vec![
+            ("steamid", u64::from(steamid.clone()).to_string()),
+            ("sessionkey", bytes_to_string(sessionkey)?),
+            ("encrypted_loginkey", bytes_to_string(encrypted_loginkey)?),
+        ];
+        let body = query
+            .iter()
+            .map(|(a, b)| format!("{}={}", a, b))
+            .collect::<Vec<String>>()
+            .join("&");
         let uri = self.get_api_url("ISteamUserAuth", "AuthenticateUser", 1);
         let response = self.client.post(uri)
-            .form(&AuthicateUserParams {
-                steamid,
-                sessionkey,
-                encrypted_loginkey,
-            })
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header(header::CONTENT_LENGTH, body.len())
+            .body(body)
             .send()
             .await?;
-        let body: response::AuthenticateUser = parses_response(response).await?;
+        let body: Response = parses_response(response).await?;
+        let sessionid = generate_sessionid()?;
+        let cookies: Vec<_> = vec![
+            format!("sessionid={}", sessionid),
+            format!("steamLogin={}", body.authenticateuser.token),
+            format!("steamLoginSecure={}", body.authenticateuser.tokensecure),
+        ];
         
-        Ok(body)
+        Ok((sessionid, cookies))
     }
 }
