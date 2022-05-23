@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{RwLock, Arc};
 use reqwest::{cookie::Jar, Url, header};
 use reqwest_middleware::ClientWithMiddleware;
 use crate::{
@@ -19,7 +19,7 @@ use rand::Rng;
 pub struct SteamAPI {
     pub cookies: Arc<Jar>,
     client: ClientWithMiddleware,
-    pub sessionid: Option<String>,
+    pub sessionid: RwLock<Option<String>>,
 }
 
 impl SteamAPI {
@@ -31,7 +31,7 @@ impl SteamAPI {
         Self {
             cookies: Arc::clone(&cookies),
             client: get_default_middleware(Arc::clone(&cookies)),
-            sessionid: None,
+            sessionid: RwLock::new(None),
         }
     }
     
@@ -43,17 +43,17 @@ impl SteamAPI {
         format!("https://{}/{}/{}/v{}", Self::HOSTNAME, interface, method, version)
     }
     
-    pub fn set_cookie(&mut self, cookie_str: &str) {
+    pub fn set_cookie(&self, cookie_str: &str) {
         let url = Self::HOSTNAME.parse::<Url>().unwrap();
         
         self.cookies.add_cookie_str(cookie_str, &url);
         
         if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
-            self.sessionid = Some(String::from(sessionid));
+            *self.sessionid.write().unwrap() = Some(String::from(sessionid));
         }
     }
     
-    pub fn set_cookies(&mut self, cookies: &Vec<String>) {
+    pub fn set_cookies(&self, cookies: &Vec<String>) {
         for cookie_str in cookies {
             self.set_cookie(cookie_str)
         }
