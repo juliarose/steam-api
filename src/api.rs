@@ -44,12 +44,12 @@ impl SteamAPI {
     }
     
     pub fn set_cookie(&mut self, cookie_str: &str) {
-        if let Ok(url) = Self::HOSTNAME.parse::<Url>() {
-            self.cookies.add_cookie_str(cookie_str, &url);
-            
-            if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
-                self.sessionid = Some(String::from(sessionid));
-            }
+        let url = Self::HOSTNAME.parse::<Url>().unwrap();
+        
+        self.cookies.add_cookie_str(cookie_str, &url);
+        
+        if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
+            self.sessionid = Some(String::from(sessionid));
         }
     }
     
