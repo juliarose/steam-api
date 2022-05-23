@@ -3,7 +3,6 @@ use reqwest::{cookie::Jar, Url, header};
 use reqwest_middleware::ClientWithMiddleware;
 use crate::{
     APIError,
-    request,
     response,
     api_helpers::{
         get_default_middleware,
@@ -13,7 +12,7 @@ use crate::{
 use std::fmt::{self, Write};
 use lazy_regex::regex_captures;
 use steamid_ng::SteamID;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use rand::Rng;
 
 #[derive(Debug)]
@@ -23,9 +22,8 @@ pub struct SteamAPI {
     pub sessionid: Option<String>,
 }
 
-const HOSTNAME: &'static str = "api.steampowered.com";
-
 impl SteamAPI {
+    pub const HOSTNAME: &'static str = "api.steampowered.com";
     
     pub fn new() -> Self {
         let cookies = Arc::new(Jar::default());
@@ -38,15 +36,15 @@ impl SteamAPI {
     }
     
     fn get_uri(&self, pathname: &str) -> String {
-        format!("https://{}{}", HOSTNAME, pathname)
+        format!("https://{}{}", Self::HOSTNAME, pathname)
     }
 
     fn get_api_url(&self, interface: &str, method: &str, version: usize) -> String {
-        format!("https://{}/{}/{}/v{}", HOSTNAME, interface, method, version)
+        format!("https://{}/{}/{}/v{}", Self::HOSTNAME, interface, method, version)
     }
     
     pub fn set_cookie(&mut self, cookie_str: &str) {
-        if let Ok(url) = HOSTNAME.parse::<Url>() {
+        if let Ok(url) = Self::HOSTNAME.parse::<Url>() {
             self.cookies.add_cookie_str(cookie_str, &url);
             
             if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
@@ -61,7 +59,12 @@ impl SteamAPI {
         }
     }
     
-    pub async fn authenticate_user<'a>(&self, steamid: &'a SteamID, sessionkey: &'a [u8], encrypted_loginkey: &'a [u8]) -> Result<(String, Vec<String>), APIError> {
+    pub async fn authenticate_user<'a>(
+        &self,
+        steamid: &'a SteamID,
+        sessionkey: &'a [u8],
+        encrypted_loginkey: &'a [u8],
+    ) -> Result<(String, Vec<String>), APIError> {
         #[derive(Deserialize, Debug)]
         struct Response {
             authenticateuser: response::AuthenticateUser,

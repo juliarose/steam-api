@@ -1,25 +1,12 @@
-use std::{
-    fs::File,
-    io::prelude::*,
-    sync::Arc
-};
-use reqwest_middleware::{
-    ClientBuilder,
-    ClientWithMiddleware
-};
+use std::{fs::File, io::prelude::*, sync::Arc};
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{
     RetryTransientMiddleware,
     policies::ExponentialBackoff
 };
-use reqwest::{
-    header,
-    cookie::CookieStore
-};
+use reqwest::{header, cookie::CookieStore};
 use serde::de::DeserializeOwned;
-use lazy_regex::{
-    regex_is_match,
-    regex_captures
-};
+use lazy_regex::{regex_is_match, regex_captures};
 use crate::APIError;
 
 const USER_AGENT_STRING: &'static str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36";
