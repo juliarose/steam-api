@@ -65,7 +65,7 @@ impl SteamAPI {
             let mut s = String::with_capacity(bytes.len() * 3);
             
             for &b in bytes {
-                write!(&mut s, "%{:02x}", b)?;
+                write!(&mut s, "%{b:02x}")?;
             }
             
             Ok(s)
@@ -76,7 +76,7 @@ impl SteamAPI {
                 let mut s = String::with_capacity(bytes.len() * 2);
                 
                 for &b in bytes {
-                    write!(&mut s, "{:02x}", b)?;
+                    write!(&mut s, "{b:02x}")?;
                 }
                 
                 Ok(s)
@@ -86,13 +86,13 @@ impl SteamAPI {
         }
         
         let query = vec![
-            ("steamid", u64::from(steamid.clone()).to_string()),
+            ("steamid", u64::from(*steamid).to_string()),
             ("sessionkey", bytes_to_string(sessionkey)?),
             ("encrypted_loginkey", bytes_to_string(encrypted_loginkey)?),
         ];
         let body = query
             .iter()
-            .map(|(a, b)| format!("{}={}", a, b))
+            .map(|(a, b)| format!("{a}={b}"))
             .collect::<Vec<String>>()
             .join("&");
         let uri = self.get_api_url("ISteamUserAuth", "AuthenticateUser", 1);
@@ -105,7 +105,7 @@ impl SteamAPI {
         let body: Response = helpers::parses_response(response).await?;
         let sessionid = generate_sessionid()?;
         let cookies: Vec<_> = vec![
-            format!("sessionid={}", sessionid),
+            format!("sessionid={sessionid}"),
             format!("steamLogin={}", body.authenticateuser.token),
             format!("steamLoginSecure={}", body.authenticateuser.tokensecure),
         ];

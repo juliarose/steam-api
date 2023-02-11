@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use lazy_regex::{regex_is_match, regex_captures};
 use crate::error::Error;
 
-const USER_AGENT_STRING: &'static str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36";
+const USER_AGENT_STRING: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36";
 
 pub fn get_default_middleware<T>(cookie_store: Arc<T>) -> ClientWithMiddleware
 where
@@ -72,7 +72,7 @@ where
             // unexpected response
             let html = String::from_utf8_lossy(&body);
             
-            println!("{}", html);
+            println!("{html}");
             
             if regex_is_match!(r#"<h1>Sorry!</h1>"#, &html) {
                 if let Some((_, message)) = regex_captures!("<h3>(.+)</h3>", &html) {

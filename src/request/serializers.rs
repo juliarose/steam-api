@@ -5,7 +5,7 @@ pub fn steamid_as_string<S>(steamid: &SteamID, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer
 {
-    s.serialize_str(&u64::from(steamid.clone()).to_string())
+    s.serialize_str(&u64::from(*steamid).to_string())
 }
 
 pub mod string {
