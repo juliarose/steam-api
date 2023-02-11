@@ -21,7 +21,7 @@ impl SteamAPI {
     
     pub fn new() -> Self {
         let cookies = Arc::new(Jar::default());
-
+        
         Self {
             cookies: Arc::clone(&cookies),
             client: helpers::get_default_middleware(Arc::clone(&cookies)),
