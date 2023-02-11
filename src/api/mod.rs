@@ -1,24 +1,18 @@
-use std::sync::{RwLock, Arc};
+mod helpers;
+
+use std::{fmt::{self, Write}, sync::{RwLock, Arc}};
 use reqwest::{cookie::Jar, Url, header};
 use reqwest_middleware::ClientWithMiddleware;
-use crate::{
-    APIError,
-    response,
-    api_helpers::{
-        get_default_middleware,
-        parses_response
-    }
-};
-use std::fmt::{self, Write};
 use lazy_regex::regex_captures;
 use steamid_ng::SteamID;
 use serde::Deserialize;
 use rand::Rng;
+use crate::{error::Error, response};
 
 #[derive(Debug)]
 pub struct SteamAPI {
-    pub cookies: Arc<Jar>,
     client: ClientWithMiddleware,
+    pub cookies: Arc<Jar>,
     pub sessionid: RwLock<Option<String>>,
 }
 
@@ -30,32 +24,29 @@ impl SteamAPI {
 
         Self {
             cookies: Arc::clone(&cookies),
-            client: get_default_middleware(Arc::clone(&cookies)),
+            client: helpers::get_default_middleware(Arc::clone(&cookies)),
             sessionid: RwLock::new(None),
         }
     }
     
-    fn get_uri(&self, pathname: &str) -> String {
-        format!("https://{}{}", Self::HOSTNAME, pathname)
-    }
-
-    fn get_api_url(&self, interface: &str, method: &str, version: usize) -> String {
+    fn get_api_url(
+        &self,
+        interface: &str,
+        method: &str,
+        version: usize,
+    ) -> String {
         format!("https://{}/{}/{}/v{}", Self::HOSTNAME, interface, method, version)
     }
     
-    pub fn set_cookie(&self, cookie_str: &str) {
+    pub fn set_cookies(&self, cookies: &Vec<String>) {
         let url = Self::HOSTNAME.parse::<Url>().unwrap();
         
-        self.cookies.add_cookie_str(cookie_str, &url);
-        
-        if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
-            *self.sessionid.write().unwrap() = Some(String::from(sessionid));
-        }
-    }
-    
-    pub fn set_cookies(&self, cookies: &Vec<String>) {
         for cookie_str in cookies {
-            self.set_cookie(cookie_str)
+            self.cookies.add_cookie_str(cookie_str, &url);
+            
+            if let Some((_, sessionid)) = regex_captures!(r#"sessionid=([A-z0-9]+)"#, cookie_str) {
+                *self.sessionid.write().unwrap() = Some(String::from(sessionid));
+            }
         }
     }
     
@@ -64,7 +55,7 @@ impl SteamAPI {
         steamid: &'a SteamID,
         sessionkey: &'a [u8],
         encrypted_loginkey: &'a [u8],
-    ) -> Result<(String, Vec<String>), APIError> {
+    ) -> Result<(String, Vec<String>), Error> {
         #[derive(Deserialize, Debug)]
         struct Response {
             authenticateuser: response::AuthenticateUser,
@@ -111,7 +102,7 @@ impl SteamAPI {
             .body(body)
             .send()
             .await?;
-        let body: Response = parses_response(response).await?;
+        let body: Response = helpers::parses_response(response).await?;
         let sessionid = generate_sessionid()?;
         let cookies: Vec<_> = vec![
             format!("sessionid={}", sessionid),
