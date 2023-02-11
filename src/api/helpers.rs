@@ -1,4 +1,4 @@
-use std::{fs::File, io::prelude::*, sync::Arc};
+use std::sync::Arc;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
 use reqwest::{header, cookie::CookieStore};
@@ -81,11 +81,6 @@ where
             } else if regex_is_match!(r#"<h1>Sign In</h1>"#, &html) && regex_is_match!(r#"g_steamID = false;"#, &html) {
                 Err(Error::NotLoggedIn)
             } else {
-                // TODO for testing - remove this eventually
-                let mut f = File::create("/home/colors/response.txt").unwrap();
-                let _ = f.write_all(&body);
-                
-                // println!("{}", String::from_utf8_lossy(&body));
                 Err(Error::ParseError(parse_error))
             }
         }
