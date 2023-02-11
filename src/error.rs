@@ -1,6 +1,3 @@
-use reqwest::{self, StatusCode};
-use reqwest_middleware;
-use serde_qs;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -17,7 +14,7 @@ pub enum Error {
     #[error("{}", .0)]
     ParseError(#[from] serde_json::Error),
     #[error("Request failed with status code: {}", .0)]
-    HttpError(StatusCode),
+    HttpError(reqwest::StatusCode),
     #[error("Not logged in")]
     NotLoggedIn,
 }
