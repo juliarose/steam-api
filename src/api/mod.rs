@@ -17,7 +17,7 @@ pub struct SteamAPI {
 }
 
 impl SteamAPI {
-    pub const HOSTNAME: &'static str = "api.steampowered.com";
+    pub const HOSTNAME: &'static str = "https://api.steampowered.com";
     
     pub fn new() -> Self {
         let cookies = Arc::new(Jar::default());
@@ -35,7 +35,7 @@ impl SteamAPI {
         method: &str,
         version: usize,
     ) -> String {
-        format!("https://{}/{}/{}/v{}", Self::HOSTNAME, interface, method, version)
+        format!("{}/{}/{}/v{}", Self::HOSTNAME, interface, method, version)
     }
     
     pub fn set_cookies(&self, cookies: &Vec<String>) {
