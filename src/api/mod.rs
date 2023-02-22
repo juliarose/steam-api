@@ -1,13 +1,15 @@
 mod helpers;
 
-use std::{fmt::{self, Write}, sync::{RwLock, Arc}};
+use crate::error::Error;
+use crate::response;
+use std::fmt::{self, Write};
+use std::sync::{RwLock, Arc};
 use reqwest::{cookie::Jar, Url, header};
 use reqwest_middleware::ClientWithMiddleware;
 use lazy_regex::regex_captures;
 use steamid_ng::SteamID;
 use serde::Deserialize;
 use rand::Rng;
-use crate::{error::Error, response};
 
 #[derive(Debug)]
 pub struct SteamAPI {
@@ -50,11 +52,11 @@ impl SteamAPI {
         }
     }
     
-    pub async fn authenticate_user<'a>(
+    pub async fn authenticate_user(
         &self,
-        steamid: &'a SteamID,
-        sessionkey: &'a [u8],
-        encrypted_loginkey: &'a [u8],
+        steamid: SteamID,
+        sessionkey: &[u8],
+        encrypted_loginkey: &[u8],
     ) -> Result<(String, Vec<String>), Error> {
         #[derive(Deserialize, Debug)]
         struct Response {
@@ -85,16 +87,11 @@ impl SteamAPI {
             bytes_to_string(&rand::thread_rng().gen::<[u8; 12]>())
         }
         
-        let query = vec![
-            ("steamid", u64::from(*steamid).to_string()),
-            ("sessionkey", bytes_to_string(sessionkey)?),
-            ("encrypted_loginkey", bytes_to_string(encrypted_loginkey)?),
-        ];
-        let body = query
-            .iter()
-            .map(|(a, b)| format!("{a}={b}"))
-            .collect::<Vec<String>>()
-            .join("&");
+        let body = vec![
+            format!("steamid={}", u64::from(steamid).to_string()),
+            format!("sessionkey={}", bytes_to_string(sessionkey)?),
+            format!("encrypted_loginkey={}", bytes_to_string(encrypted_loginkey)?),
+        ].join("&");
         let uri = self.get_api_url("ISteamUserAuth", "AuthenticateUser", 1);
         let response = self.client.post(uri)
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
